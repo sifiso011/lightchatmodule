@@ -1,4 +1,3 @@
-
 const path = require('path');
 const http = require('http');
 const express = require('express');
@@ -6,9 +5,9 @@ const socketio = require('socket.io');
 const formatMessage = require('./helpers/formatDate')
 const {
   getActiveUser,
-  exitDepartment,
+  exitRoom,
   newUser,
-  getIndividualDepartmentUsers
+  getIndividualRoomUsers
 } = require('./helpers/userHelper');
 
 const app = express();
@@ -20,26 +19,26 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // this block will run when the client connects
 io.on('connection', socket => {
-  socket.on('joinDepartment', ({ username, department }) => {
-    const user = newUser(socket.id, username, department);
+  socket.on('joinRoom', ({ username, room }) => {
+    const user = newUser(socket.id, username, room);
 
-    socket.join(user.department);
+    socket.join(user.room);
 
     // General welcome
-    socket.emit('message', formatMessage("Dixio", 'welcome team! '));
+    socket.emit('message', formatMessage("WebCage", 'Messages are limited to this room! '));
 
     // Broadcast everytime users connects
     socket.broadcast
-      .to(user.department)
+      .to(user.room)
       .emit(
         'message',
-        formatMessage("Dixio", `${user.username} has joined the department`)
+        formatMessage("WebCage", `${user.username} has joined the room`)
       );
 
-    // Current active users and department name
-    io.to(user.department).emit('departmentUsers', {
-      department: user.department,
-      users: getIndividualDepartmentUsers(user.department)
+    // Current active users and room name
+    io.to(user.room).emit('roomUsers', {
+      room: user.room,
+      users: getIndividualRoomUsers(user.room)
     });
   });
 
@@ -47,23 +46,23 @@ io.on('connection', socket => {
   socket.on('chatMessage', msg => {
     const user = getActiveUser(socket.id);
 
-    io.to(user.department).emit('message', formatMessage(user.username, msg));
+    io.to(user.room).emit('message', formatMessage(user.username, msg));
   });
 
   // Runs when client disconnects
   socket.on('disconnect', () => {
-    const user = exitDepartment(socket.id);
+    const user = exitRoom(socket.id);
 
     if (user) {
-      io.to(user.department).emit(
+      io.to(user.room).emit(
         'message',
-        formatMessage("Dixio", `${user.username} has left the department`)
+        formatMessage("WebCage", `${user.username} has left the room`)
       );
 
-      // Current active users and department name
-      io.to(user.department).emit('departmentUsers', {
-        department: user.department,
-        users: getIndividualDepartmentUsers(user.department)
+      // Current active users and room name
+      io.to(user.room).emit('roomUsers', {
+        room: user.room,
+        users: getIndividualRoomUsers(user.room)
       });
     }
   });
